@@ -50,7 +50,6 @@ class ElementorGitPublisher {
     private function load_classes() {
         // Only load if files exist
         $files = array(
-            'logger' => EGP_PLUGIN_DIR . 'includes/class-logger.php',
             'admin' => EGP_PLUGIN_DIR . 'includes/class-admin.php',
             'github-manager' => EGP_PLUGIN_DIR . 'includes/class-github-manager.php',
             'elementor-hooks' => EGP_PLUGIN_DIR . 'includes/class-elementor-hooks.php'
@@ -68,19 +67,9 @@ class ElementorGitPublisher {
         add_option('egp_github_token', '');
         add_option('egp_github_repo', '');
         add_option('egp_enabled', 'no');
-
-        // Log activation
-        if (function_exists('egp_log_info')) {
-            egp_log_info('Plugin activated');
-        }
     }
 
     public function deactivate() {
-        // Log deactivation
-        if (function_exists('egp_log_info')) {
-            egp_log_info('Plugin deactivated');
-        }
-
         // Cleanup if needed
     }
 

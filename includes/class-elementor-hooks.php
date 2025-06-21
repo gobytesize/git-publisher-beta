@@ -6,8 +6,6 @@ if (!defined('ABSPATH')) {
 class EGP_Elementor_Hooks {
 
     public function __construct() {
-        egp_log_info('Elementor hooks initialized');
-
         // Add meta box to enable Git workflow per page
         add_action('add_meta_boxes', array($this, 'add_git_meta_box'));
         add_action('save_post', array($this, 'save_git_meta_box'));
@@ -61,13 +59,6 @@ class EGP_Elementor_Hooks {
             • Review and merge to publish<br>
             • Full version history
         </div>
-
-        <div style="margin: 15px 0; padding: 8px; background: #e7f3ff; border-radius: 3px; font-size: 11px;">
-            <strong>Debug Info:</strong><br>
-            Post ID: <?php echo $post->ID; ?><br>
-            Git Enabled: <?php echo $git_enabled ? 'Yes' : 'No'; ?><br>
-            Is Elementor: <?php echo get_post_meta($post->ID, '_elementor_edit_mode', true) === 'builder' ? 'Yes' : 'No'; ?>
-        </div>
         <?php
     }
 
@@ -87,61 +78,33 @@ class EGP_Elementor_Hooks {
 
         $git_enabled = isset($_POST['egp_git_enabled']) ? '1' : '0';
         update_post_meta($post_id, '_egp_git_enabled', $git_enabled);
-
-        egp_log_debug('Git workflow setting updated', [
-            'post_id' => $post_id,
-            'enabled' => $git_enabled
-        ]);
     }
 
     public function after_elementor_save($document, $data) {
         $post_id = $document->get_post()->ID;
 
-        egp_log_info('Elementor save detected', [
-            'post_id' => $post_id,
-            'title' => $document->get_post()->post_title
-        ]);
-
         // Only process if Git is enabled for this page
         if (!$this->is_git_enabled($post_id)) {
-            egp_log_debug('Git workflow not enabled for this page', ['post_id' => $post_id]);
             return;
         }
 
-        egp_log_info('Processing Git workflow for page', ['post_id' => $post_id]);
-
         // Check if plugin is properly configured
         if (!$this->is_plugin_configured()) {
-            egp_log_error('Plugin not properly configured');
             $this->add_admin_notice('error', 'Git Publisher is not configured. Please configure GitHub settings first.');
             return;
         }
 
-        egp_log_debug('Plugin configuration verified');
-
         // Prepare page data
         $page_data = $this->prepare_page_data($document->get_post(), $data);
-        egp_log_debug('Page data prepared', ['data_keys' => array_keys($page_data)]);
 
         // Send to GitHub
         $github_manager = new EGP_GitHub_Manager();
-        egp_log_info('Sending to GitHub...');
-
         $result = $github_manager->create_page_branch($post_id, $page_data);
 
         if (is_wp_error($result)) {
-            egp_log_error('GitHub operation failed', [
-                'error_code' => $result->get_error_code(),
-                'error_message' => $result->get_error_message()
-            ]);
             $this->add_admin_notice('error', 'Failed to create GitHub pull request: ' . $result->get_error_message());
             return;
         }
-
-        egp_log_info('GitHub PR created successfully', [
-            'pr_url' => $result['pr_url'],
-            'pr_number' => $result['pr_number']
-        ]);
 
         // Store PR information
         update_post_meta($post_id, '_egp_pending_pr', [
@@ -173,12 +136,7 @@ class EGP_Elementor_Hooks {
     }
 
     private function is_git_enabled($post_id) {
-        $enabled = get_post_meta($post_id, '_egp_git_enabled', true) === '1';
-        egp_log_debug('Checking if Git enabled for post', [
-            'post_id' => $post_id,
-            'enabled' => $enabled
-        ]);
-        return $enabled;
+        return get_post_meta($post_id, '_egp_git_enabled', true) === '1';
     }
 
     private function is_plugin_configured() {
@@ -186,24 +144,13 @@ class EGP_Elementor_Hooks {
         $repo = get_option('egp_github_repo');
         $enabled = get_option('egp_enabled');
 
-        $configured = !empty($token) && !empty($repo) && $enabled === 'yes';
-
-        egp_log_debug('Plugin configuration check', [
-            'has_token' => !empty($token),
-            'has_repo' => !empty($repo),
-            'plugin_enabled' => $enabled === 'yes',
-            'fully_configured' => $configured
-        ]);
-
-        return $configured;
+        return !empty($token) && !empty($repo) && $enabled === 'yes';
     }
 
     private function add_admin_notice($type, $message) {
         $notices = get_transient('egp_admin_notices') ?: [];
         $notices[] = ['type' => $type, 'message' => $message];
         set_transient('egp_admin_notices', $notices, 30);
-
-        egp_log_info('Admin notice added', ['type' => $type, 'message' => $message]);
     }
 
     public function show_git_notices() {
